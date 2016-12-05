@@ -9,7 +9,7 @@
 
 namespace CoopTilleuls\Bundle\AclSonataAdminExtensionBundle\Admin;
 
-use Sonata\AdminBundle\Admin\AdminExtension;
+use Sonata\AdminBundle\Admin\AbstractAdminExtension;
 use Sonata\AdminBundle\Admin\AdminInterface;
 use Sonata\AdminBundle\Datagrid\ProxyQueryInterface;
 use Doctrine\DBAL\Connection;
@@ -17,20 +17,20 @@ use Symfony\Component\Security\Acl\Permission\MaskBuilder;
 use Symfony\Component\Security\Core\Role\Role;
 use Symfony\Component\Security\Core\Role\RoleHierarchy;
 use Symfony\Component\Security\Core\Role\RoleInterface;
-use Symfony\Component\Security\Core\SecurityContextInterface;
 use Symfony\Component\Security\Acl\Domain\UserSecurityIdentity;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorage;
 
 /**
  * Admin extension filtering the list
  *
  * @author Kévin Dunglas <kevin@les-tilleuls.coop>
  */
-class AclAdminExtension extends AdminExtension
+class AclAdminExtension extends AbstractAdminExtension
 {
     /**
-     * @var SecurityContextInterface
+     * @var TokenStorage
      */
-    protected $securityContext;
+    protected $tokenStorage;
     /**
      * @var Connection
      */
@@ -42,16 +42,16 @@ class AclAdminExtension extends AdminExtension
     protected $roleHierarchy;
 
     /**
-     * @param SecurityContextInterface $securityContext
+     * @param TokenStorage $tokenStorage
      * @param Connection               $databaseConnection
      * @param array                    $roleHierarchy
      */
     public function __construct(
-        SecurityContextInterface $securityContext,
+        TokenStorage $tokenStorage,
         Connection $databaseConnection,
         array $roleHierarchy = array()
     ) {
-        $this->securityContext = $securityContext;
+        $this->tokenStorage = $tokenStorage;
         $this->databaseConnection = $databaseConnection;
         $this->roleHierarchy = new RoleHierarchy($roleHierarchy);
     }
@@ -69,14 +69,14 @@ class AclAdminExtension extends AdminExtension
         // Don't filter for admins and for not ACL enabled classes and for command cli
         if (
             !$admin->isAclEnabled()
-            || !$this->securityContext->getToken()
+            || !$this->tokenStorage->getToken()
             || $admin->isGranted(sprintf($admin->getSecurityHandler()->getBaseRole($admin), 'ADMIN'))
         ) {
             return;
         }
 
         // Retrieve current logged user SecurityIdentity
-        $user = $this->securityContext->getToken()->getUser();
+        $user = $this->tokenStorage->getToken()->getUser();
         $userSecurityIdentity = UserSecurityIdentity::fromAccount($user);
 
         // Retrieve current logged user roles
